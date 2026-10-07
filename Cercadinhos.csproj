@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Cercadinhos</AssemblyName>
+    <RootNamespace>Cercadinhos</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\Cercadinhos.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
+    <Version>1.0.0</Version>
+    <Product>Cercadinhos</Product>
+    <AssemblyTitle>Cercadinhos</AssemblyTitle>
+    <Description>Caixinhas para organizar a área de trabalho</Description>
+    <Company>Cercadinhos</Company>
+    <!-- um .exe só (usa o .NET 8 que já está no computador) -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <DebugType>none</DebugType>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="assets\Cercadinhos.ico" />
+    <Resource Include="assets\Cercadinhos.png" />
+  </ItemGroup>
+</Project>

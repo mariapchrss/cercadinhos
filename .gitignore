@@ -1,0 +1,10 @@
+# saídas de compilação
+bin/
+obj/
+app/
+
+# coisas do editor e do Windows
+.vs/
+*.user
+Thumbs.db
+desktop.ini
