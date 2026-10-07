@@ -47,5 +47,7 @@ Set-ItemProperty $chave NoModify 1 -Type DWord
 Set-ItemProperty $chave NoRepair 1 -Type DWord
 Set-ItemProperty $chave EstimatedSize ([int]((Get-Item $exe).Length / 1KB)) -Type DWord
 
-Start-Process $exe
+# abre pelo Explorer, para o programa nao ficar preso a janela que rodou este script
+# (se ela fechar ou reiniciar, o Windows encerraria o programa junto)
+Start-Process explorer.exe -ArgumentList ('"' + $exe + '"')
 Write-Host "Pronto! Instalado em $destino e aberto."
