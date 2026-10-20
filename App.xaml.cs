@@ -23,6 +23,7 @@ namespace Cercadinhos
         Mutex mutex;
         DispatcherTimer saveTimer, peekTimer;
         bool semSalvar, escondidas, peekViuNossa;
+        string avisoInicio;   // problema ao abrir as caixinhas, mostrado na bandeja
         IntPtr peekFrente;
         string atalhoPeek = "";
 
@@ -70,7 +71,21 @@ namespace Cercadinhos
                 while (true) { sinal.WaitOne(); Dispatcher.BeginInvoke(new Action(MostrarCentral)); }
             }) { IsBackground = true }.Start();
 
-            Cfg = Store.Load();
+            Cfg = Store.Load(out string problema);
+            if (Cfg == null)
+            {
+                // Não deu pra ler as caixinhas: nunca seguir vazio e salvar por cima.
+                Anotar("não consegui ler o config.json (" + problema + "); guardei uma cópia como config.ilegivel-…");
+                Cfg = Store.UltimoBackup(out string qual);
+                if (Cfg != null) avisoInicio = "Não consegui abrir suas caixinhas, então voltei a cópia de segurança " + qual + ".";
+                else
+                {
+                    Cfg = new Config { Welcomed = true };
+                    semSalvar = true;
+                    avisoInicio = "Não consegui abrir suas caixinhas. Não mexi em nada: feche e abra o Cercadinhos de novo.";
+                }
+                Anotar(avisoInicio);
+            }
             Migrar();
             Shell.ConsertarInicio();
             saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
@@ -81,7 +96,9 @@ namespace Cercadinhos
             RegistrarAtalhos();
             CriarBandeja();
             foreach (var f in Cfg.Fences) Abrir(f);
-            if (Shell.IconesEscondidos()) GuardarSoltos();
+            // sem as caixinhas de verdade, não junta nada em "Outros" (era assim que a arrumação se perdia)
+            if (Shell.IconesEscondidos() && !semSalvar) GuardarSoltos();
+            if (avisoInicio != null) tray?.ShowBalloonTip(8000, "Cercadinhos", avisoInicio, WF.ToolTipIcon.Warning);
             VigiarAreaDeTrabalho();
             Shell.VigiarDoisCliques(() => { if (Cfg.DoisCliques) AlternarEscondidas(); });
 
@@ -207,6 +224,7 @@ namespace Cercadinhos
 
         public void Apagar(FenceWindow w)
         {
+            Anotar("apagou a caixinha \"" + w.Data.Title + "\" (" + w.Abas.Sum(t => t.Items.Count) + " itens)");
             Cfg.Fences.Remove(w.Data);
             wins.Remove(w);
             w.Close();
@@ -307,6 +325,7 @@ namespace Cercadinhos
                 Left = area.Left + 16, Top = area.Bottom - 16 - 160, Width = 372, Height = 160,
             };
             Estilos.Achar(Cfg.Estilo).Aplicar(f, Cfg.Fences.Count);
+            Anotar("criei a caixinha Outros (havia " + Cfg.Fences.Count + " caixinhas)");
             return (Adicionar(f), f);
         }
 
@@ -723,7 +742,7 @@ namespace Cercadinhos
         {
             semSalvar = true;
             escondidas = true;
-            Cfg = Store.Load();
+            Cfg = Store.Load(out _) ?? new Config();
             foreach (var f in Cfg.Fences) Abrir(f);
             var c = new CentralWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = -4000, Top = 0, ShowInTaskbar = false };
             c.Show();

@@ -137,7 +137,66 @@ namespace Cercadinhos
         public static readonly string File = Path.Combine(Dir, "config.json");
         public static readonly string Layouts = Path.Combine(Dir, "layouts");
 
-        public static Config Load() => LoadFrom(File) ?? new Config();
+        public static readonly string Backups = Path.Combine(Dir, "backups");
+
+        // Sem arquivo = primeira vez (caixinhas vazias). Com arquivo que não dá pra ler, devolve null e
+        // diz o motivo: quem chama NÃO pode seguir com caixinhas vazias, senão salva por cima da arrumação.
+        // Na hora do login o arquivo às vezes está preso por outro programa, então tenta de novo por uns segundos.
+        public static Config Load(out string problema)
+        {
+            problema = null;
+            if (!System.IO.File.Exists(File)) return new Config();
+            for (int i = 0; i < 12; i++)
+            {
+                try
+                {
+                    var c = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText(File));
+                    if (c != null) return c;
+                    problema = "arquivo vazio";
+                    break;
+                }
+                catch (IOException e) { problema = e.Message; System.Threading.Thread.Sleep(500); }
+                catch (Exception e) { problema = e.Message; break; }
+            }
+            try { System.IO.File.Copy(File, Path.Combine(Dir, "config.ilegivel-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json"), true); } catch { }
+            return null;
+        }
+
+        // A cópia de segurança mais nova que dá pra ler (uma por dia, em backups\).
+        public static Config UltimoBackup(out string qual)
+        {
+            qual = null;
+            try
+            {
+                if (!Directory.Exists(Backups)) return null;
+                var arquivos = new List<string>(Directory.GetFiles(Backups, "config-*.json"));
+                arquivos.Sort();
+                for (int i = arquivos.Count - 1; i >= 0; i--)
+                {
+                    var c = LoadFrom(arquivos[i]);
+                    if (c != null && c.Fences.Count > 0) { qual = Path.GetFileName(arquivos[i]); return c; }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        // Antes da primeira gravação do dia, guarda como estava (mantém as últimas 14).
+        static void CopiaDoDia()
+        {
+            try
+            {
+                if (!System.IO.File.Exists(File)) return;
+                Directory.CreateDirectory(Backups);
+                var hoje = Path.Combine(Backups, "config-" + DateTime.Now.ToString("yyyy-MM-dd") + ".json");
+                if (System.IO.File.Exists(hoje)) return;
+                System.IO.File.Copy(File, hoje);
+                var velhos = new List<string>(Directory.GetFiles(Backups, "config-*.json"));
+                velhos.Sort();
+                for (int i = 0; i < velhos.Count - 14; i++) System.IO.File.Delete(velhos[i]);
+            }
+            catch { }
+        }
 
         public static Config LoadFrom(string arquivo)
         {
@@ -157,6 +216,7 @@ namespace Cercadinhos
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(arquivo));
+                if (arquivo == File) CopiaDoDia();
                 var tmp = arquivo + ".tmp";
                 System.IO.File.WriteAllText(tmp, JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true }));
                 System.IO.File.Move(tmp, arquivo, true);
